@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Kick BRB Oylama</title>
+<style>
+  :root { --yesil:#53fc18; --kart:#15191d; --zemin:#262c32; --soluk:#9aa4ad; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { width:100%; height:100%; overflow:hidden; background:transparent;
+    font-family:"Segoe UI", Inter, Arial, sans-serif; color:#fff; }
+
+  #sahne { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:2.2vw; padding:3vw;
+    background:radial-gradient(ellipse at top, rgba(83,252,24,.12), transparent 60%), rgba(8,10,12,.94); }
+  .ust { text-align:center; }
+  .ust h1 { font-size:3.2vw; font-weight:800; letter-spacing:-.02em; }
+  .ust p { font-size:1.5vw; color:var(--soluk); margin-top:.5vw; }
+  .ust p b { color:var(--yesil); }
+
+  #kartlar { display:grid; grid-template-columns:repeat(var(--n,3), 1fr); gap:1.6vw; width:100%; max-width:90vw; }
+  .kart { background:var(--kart); border-radius:1vw; overflow:hidden; border:.22vw solid transparent;
+    transition:transform .4s, border-color .3s, opacity .4s, filter .4s, box-shadow .4s; }
+  .kart.lider { border-color:rgba(83,252,24,.6); }
+  .kart.kazandi { transform:scale(1.05); border-color:var(--yesil); box-shadow:0 0 3vw rgba(83,252,24,.45); }
+  .kart.kaybetti { opacity:.3; filter:grayscale(1); }
+  .video { aspect-ratio:16/9; background:#000; position:relative; }
+  .video video { width:100%; height:100%; object-fit:cover; display:block; }
+  .video .yok { position:absolute; inset:0; display:grid; place-items:center; text-align:center;
+    color:var(--soluk); font-size:1vw; padding:1vw; background:repeating-linear-gradient(45deg,#111,#111 1vw,#16191c 1vw,#16191c 2vw); }
+  .numara { position:absolute; top:.8vw; left:.8vw; width:4vw; height:4vw; border-radius:.8vw;
+    background:var(--yesil); color:#000; font-weight:900; font-size:2.6vw; display:grid; place-items:center;
+    box-shadow:0 .3vw 1vw rgba(0,0,0,.5); z-index:2; }
+  .bilgi { padding:1vw 1.2vw 1.2vw; }
+  .baslik { font-size:1.4vw; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cubuk { height:.8vw; background:var(--zemin); border-radius:1vw; margin-top:.8vw; overflow:hidden; }
+  .cubuk i { display:block; height:100%; width:0; background:var(--yesil); transition:width .4s; }
+  .sayi { display:flex; justify-content:space-between; font-size:1.2vw; color:var(--soluk); margin-top:.5vw; }
+  .sayi b { color:#fff; }
+
+  .alt { width:100%; max-width:90vw; }
+  #sure-cubuk { height:.6vw; background:var(--zemin); border-radius:1vw; overflow:hidden; }
+  #sure-cubuk i { display:block; height:100%; width:100%; background:#fff; }
+  .alt-satir { display:flex; justify-content:space-between; margin-top:.8vw; font-size:1.3vw; color:var(--soluk); }
+  .alt-satir b { color:#fff; }
+
+  #oynatici { position:fixed; inset:0; background:#000; display:none; }
+  #oynatici.acik { display:block; }
+  #oynatici video { width:100%; height:100%; object-fit:contain; }
+  #oynatici .etiket { position:absolute; left:2vw; bottom:2vw; background:rgba(0,0,0,.72); padding:.8vw 1.4vw;
+    border-radius:.8vw; font-size:1.4vw; border-left:.4vw solid var(--yesil); }
+  #oynatici .etiket small { display:block; color:var(--soluk); font-size:1vw; margin-top:.2vw; }
+
+  #ses-uyari { position:fixed; top:2vw; left:50%; transform:translateX(-50%); display:none; z-index:6;
+    background:#c90; color:#000; font-weight:700; font-size:1.3vw; padding:.8vw 1.6vw; border-radius:.8vw; cursor:pointer; }
+  #ses-uyari.acik { display:block; }
+
+  #mesaj { position:fixed; inset:0; display:none; place-items:center; text-align:center; font-size:1.8vw;
+    background:rgba(8,10,12,.94); padding:5vw; color:var(--soluk); }
+  #mesaj.acik { display:grid; }
+
+  #durum { position:fixed; top:1vw; right:1.2vw; font-size:.9vw; color:var(--soluk); display:flex; align-items:center; gap:.5vw; z-index:5; }
+  #durum i { width:.7vw; height:.7vw; border-radius:50%; background:#c33; display:inline-block; }
+  #durum.bagli i { background:var(--yesil); }
+  #test { position:fixed; top:1vw; left:1.2vw; font-size:.9vw; background:#c90; color:#000; padding:.2vw .6vw; border-radius:.3vw; font-weight:700; display:none; z-index:5; }
+</style>
+</head>
+<body>
+
+<div id="sahne">
+  <div class="ust">
+    <h1 id="baslik"></h1>
+    <p id="alt-baslik"></p>
+  </div>
+  <div id="kartlar"></div>
+  <div class="alt">
+    <div id="sure-cubuk"><i></i></div>
+    <div class="alt-satir"><span id="sure-yazi"></span><span>Toplam oy: <b id="toplam">0</b></span></div>
+  </div>
+</div>
+
+<div id="oynatici">
+  <video id="oynat-video" playsinline></video>
+  <div class="etiket"><span id="oynat-baslik"></span><small id="oynat-alt"></small></div>
+</div>
+
+<div id="ses-uyari">Tarayıcı sesi engelledi. Sesi açmak için sayfaya bir kez tıkla. (OBS'te bu olmaz.)</div>
+<div id="mesaj"></div>
+<div id="durum"><i></i><span>Chat bağlanıyor…</span></div>
+<div id="test">TEST MODU — klavyeden 1/2/3 bas</div>
+
+<script src="config.js"></script>
+<script src="klipler.js"></script>
+<script>
+(() => {
+  // ---------- Ayarlar ----------
+  const C = Object.assign({
+    kanal: "", chatroomId: "", oylamaSuresi: 30, secenekSayisi: 3, sonrakiTurBekleme: 4,
+    onizlemeBaslangic: 3, ses: 1, klipler: [],
+    baslik: "Yayın koptu, birazdan dönüyorum!",
+    altBaslik: "Bu arada ne izleyelim? Chat'e numarasını yaz:",
+  }, window.BRB_CONFIG || {});
+  const q = new URLSearchParams(location.search);
+  if (q.get("kanal")) C.kanal = q.get("kanal");
+  if (q.get("chatroom")) C.chatroomId = q.get("chatroom");
+  if (q.get("sure")) C.oylamaSuresi = +q.get("sure");
+  if (q.get("secenek")) C.secenekSayisi = +q.get("secenek");
+  const TEST = q.has("test");
+  const HAVUZ = (C.klipler && C.klipler.length ? C.klipler : (window.BRB_KLIPLER || []))
+    .filter(k => k && k.dosya);
+
+  const $ = s => document.querySelector(s);
+  const kartlarEl = $("#kartlar"), sureCubuk = $("#sure-cubuk i"), sureYazi = $("#sure-yazi");
+  const oynatici = $("#oynatici"), oynatVideo = $("#oynat-video");
+  $("#baslik").textContent = C.baslik;
+
+  // Dosya yolundaki boşluk, #, ? gibi karakterleri güvenli hale getir
+  const yol = p => /:\/\//.test(p) ? p : p.split("/").map(encodeURIComponent).join("/");
+  const karistir = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+  // ---------- Durum ----------
+  let faz = "bos";              // oylama | kazanan | oynuyor
+  let secenekler = [];          // bu turdaki klipler
+  let oncekiler = new Set();    // tekrar çıkmasın diye bir önceki turun klipleri
+  const oylar = new Map();      // kullanıcı -> seçenek indeksi (kişi başı 1 oy, değiştirebilir)
+  let bitis = 0, zamanlayici = null;
+
+  function sayimlar() {
+    const s = new Array(secenekler.length).fill(0);
+    for (const v of oylar.values()) s[v]++;
+    return s;
+  }
+
+  // ---------- Oy alma ----------
+  function oyAl(kullanici, metin) {
+    if (faz !== "oylama" || !kullanici || typeof metin !== "string") return;
+    const m = metin.trim().match(/^!?\s*(\d)\s*$/);
+    if (!m) return;
+    const n = +m[1];
+    if (n < 1 || n > secenekler.length) return;
+    oylar.set(String(kullanici).toLowerCase(), n - 1);
+    cizimIste();
+  }
+
+  let cizimBekliyor = false;
+  function cizimIste() {
+    if (cizimBekliyor) return;
+    cizimBekliyor = true;
+    requestAnimationFrame(() => { cizimBekliyor = false; oylariCiz(); });
+  }
+
+  function oylariCiz() {
+    const s = sayimlar(), toplam = s.reduce((a, b) => a + b, 0), enCok = Math.max(0, ...s);
+    $("#toplam").textContent = toplam;
+    [...kartlarEl.children].forEach((kart, i) => {
+      const yuzde = toplam ? Math.round(s[i] * 100 / toplam) : 0;
+      kart.querySelector(".cubuk i").style.width = yuzde + "%";
+      kart.querySelector(".oy").textContent = s[i];
+      kart.querySelector(".yuzde").textContent = yuzde + "%";
+      if (faz === "oylama") kart.classList.toggle("lider", enCok > 0 && s[i] === enCok);
+    });
+  }
+
+  // ---------- Tur ----------
+  function turBaslat() {
+    if (!HAVUZ.length) {
+      mesaj("Klip bulunamadı.<br><br>Videoları <b>klipler</b> klasörüne koyup <b>klipleri-tara.bat</b>'a çift tıkla,<br>sonra OBS'te kaynağı yenile.");
+      return;
+    }
+    const n = Math.max(1, Math.min(C.secenekSayisi, HAVUZ.length));
+    let adaylar = HAVUZ.filter(k => !oncekiler.has(k.dosya));
+    if (adaylar.length < n) adaylar = HAVUZ.slice();
+    secenekler = karistir(adaylar.slice()).slice(0, n);
+    oncekiler = new Set(secenekler.map(k => k.dosya));
+    oylar.clear();
+    faz = "oylama";
+
+    const numaralar = secenekler.map((_, i) => `<b>${i + 1}</b>`).join(n > 2 ? ", " : " veya ");
+    $("#alt-baslik").innerHTML = `${C.altBaslik} ${numaralar}`;
+    kartlarEl.style.setProperty("--n", n);
+    kartlarEl.innerHTML = "";
+    secenekler.forEach((k, i) => {
+      const kart = document.createElement("div");
+      kart.className = "kart";
+      kart.innerHTML = `
+        <div class="video"><video muted loop playsinline preload="auto"></video><div class="numara">${i + 1}</div></div>
+        <div class="bilgi">
+          <div class="baslik"></div>
+          <div class="cubuk"><i></i></div>
+          <div class="sayi"><span><b class="oy">0</b> oy</span><span class="yuzde">0%</span></div>
+        </div>`;
+      kart.querySelector(".baslik").textContent = k.baslik || k.dosya.split("/").pop();
+      const v = kart.querySelector("video");
+      if (k.kapak) v.poster = yol(k.kapak);
+      v.addEventListener("loadedmetadata", () => {
+        const bas = isFinite(v.duration) ? Math.min(C.onizlemeBaslangic, v.duration / 3) : 0;
+        try { v.currentTime = bas; } catch (e) {}
+        v.play().catch(() => {});
+      }, { once: true });
+      v.addEventListener("error", () => {
+        const yok = document.createElement("div");
+        yok.className = "yok";
+        yok.textContent = "Video açılamadı: " + k.dosya;
+        v.parentElement.appendChild(yok);
+      }, { once: true });
+      v.src = yol(k.dosya);
+      kartlarEl.appendChild(kart);
+    });
+
+    sahneGoster();
+    oylariCiz();
+    bitis = Date.now() + C.oylamaSuresi * 1000;
+    clearInterval(zamanlayici);
+    zamanlayici = setInterval(sayac, 100);
+    sayac();
+  }
+
+  function sayac() {
+    const kalan = Math.max(0, bitis - Date.now());
+    sureCubuk.style.width = (kalan / (C.oylamaSuresi * 1000) * 100) + "%";
+    sureYazi.innerHTML = `Oylama bitiyor: <b>${Math.ceil(kalan / 1000)} sn</b>`;
+    if (kalan <= 0) { clearInterval(zamanlayici); oylamaBitir(); }
+  }
+
+  function oylamaBitir() {
+    faz = "kazanan";
+    const s = sayimlar(), enCok = Math.max(...s);
+    const adaylar = s.map((x, i) => x === enCok ? i : -1).filter(i => i >= 0);
+    const kazanan = adaylar[Math.floor(Math.random() * adaylar.length)]; // beraberlikte kura
+    const toplam = s.reduce((a, b) => a + b, 0);
+    [...kartlarEl.children].forEach((kart, i) => {
+      kart.classList.remove("lider");
+      kart.classList.add(i === kazanan ? "kazandi" : "kaybetti");
+    });
+    sureYazi.innerHTML = toplam
+      ? `Kazanan: <b>${kazanan + 1} numara</b> (${s[kazanan]} oy)`
+      : `Oy gelmedi, <b>${kazanan + 1} numarayı</b> ben seçtim`;
+    setTimeout(() => oynat(secenekler[kazanan], s[kazanan], toplam), 2500);
+  }
+
+  function oynat(k, oy, toplam) {
+    faz = "oynuyor";
+    kartlarEl.querySelectorAll("video").forEach(v => { v.pause(); v.removeAttribute("src"); v.load(); });
+    $("#oynat-baslik").textContent = k.baslik || k.dosya.split("/").pop();
+    $("#oynat-alt").textContent = toplam ? `Chat seçti — ${oy}/${toplam} oy` : "Rastgele seçildi";
+    oynatici.classList.add("acik");
+    $("#sahne").style.display = "none";
+    oynatVideo.onended = () => setTimeout(turBaslat, C.sonrakiTurBekleme * 1000);
+    oynatVideo.onerror = () => setTimeout(turBaslat, 3000);
+    oynatVideo.src = yol(k.dosya);
+    oynatVideo.currentTime = 0;
+    oynatVideo.volume = Math.max(0, Math.min(1, C.ses));
+    oynatVideo.muted = false;
+    oynatVideo.play().catch(() => {
+      // Tarayıcı sesli otomatik oynatmayı engelledi: sessiz oynat, kullanıcıya söyle
+      oynatVideo.muted = true;
+      $("#ses-uyari").classList.add("acik");
+      oynatVideo.play().catch(() => {});
+    });
+  }
+
+  // Sayfaya bir tıklama/tuş sesi açar (Chrome'da test ederken gerekir; OBS'te gerekmez)
+  function sesiAc() {
+    $("#ses-uyari").classList.remove("acik");
+    if (oynatVideo.muted && faz === "oynuyor") { oynatVideo.muted = false; oynatVideo.play().catch(() => {}); }
+  }
+  document.addEventListener("pointerdown", sesiAc);
+  document.addEventListener("keydown", sesiAc);
+
+  function sahneGoster() {
+    oynatVideo.pause();
+    oynatici.classList.remove("acik");
+    $("#sahne").style.display = "";
+    $("#mesaj").classList.remove("acik");
+  }
+
+  function mesaj(html) {
+    $("#mesaj").innerHTML = html;
+    $("#mesaj").classList.add("acik");
+  }
+
+  // ---------- Kick chat (Pusher websocket) ----------
+  // Kick anahtarı zaman zaman değiştiriyor: her bağlantıda güncelini Kick'ten ister,
+  // alamazsa bilinen son anahtarı kullanır (Kasım 2026).
+  const YEDEK_ANAHTAR = { key: "34bf7a0ff419a2a775b9", cluster: "us2" };
+  let mesajSayisi = 0, bagliYazi = "";
+
+  async function anahtarAl() {
+    try {
+      const r = await fetch("https://web.kick.com/api/v1/realtime/connection", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ client: { id: "brb-oylama-" + Math.random().toString(36).slice(2), type: "web" },
+          capabilities: { accepted_providers: [{ provider: "pusher" }] } }),
+      });
+      const j = await r.json();
+      const p = (j.data && j.data.connections || []).find(c => c.provider === "pusher");
+      if (p && p.credentials && p.credentials.app_key) return { key: p.credentials.app_key, cluster: p.credentials.cluster || "us2" };
+    } catch (e) {}
+    return YEDEK_ANAHTAR;
+  }
+
+  function durum(bagli, yazi) {
+    $("#durum").classList.toggle("bagli", bagli);
+    $("#durum span").textContent = yazi;
+  }
+
+  async function chatroomBul() {
+    if (C.chatroomId) return String(C.chatroomId);
+    if (!C.kanal || C.kanal === "kanal_adin") return null;
+    try {
+      const r = await fetch(`https://kick.com/api/v2/channels/${encodeURIComponent(C.kanal)}`);
+      const j = await r.json();
+      return j && j.chatroom && j.chatroom.id ? String(j.chatroom.id) : null;
+    } catch (e) { return null; }
+  }
+
+  async function baglan(id) {
+    const a = await anahtarAl();
+    const ws = new WebSocket(`wss://ws-${a.cluster}.pusher.com/app/${a.key}?protocol=7&client=js&version=8.4.0&flash=false`);
+    ws.onmessage = e => {
+      let m; try { m = JSON.parse(e.data); } catch (_) { return; }
+      if (m.event === "pusher:connection_established") {
+        ws.send(JSON.stringify({ event: "pusher:subscribe", data: { auth: "", channel: `chatrooms.${id}.v2` } }));
+      } else if (m.event === "pusher_internal:subscription_succeeded") {
+        bagliYazi = "Chat bağlı" + (C.kanal && C.kanal !== "kanal_adin" ? ": " + C.kanal : "");
+        durum(true, bagliYazi);
+      } else if (m.event === "pusher:ping") {
+        ws.send(JSON.stringify({ event: "pusher:pong", data: {} }));
+      } else if (m.event === "App\\Events\\ChatMessageEvent") {
+        let d; try { d = typeof m.data === "string" ? JSON.parse(m.data) : m.data; } catch (_) { return; }
+        const s = d && d.sender || {};
+        mesajSayisi++;
+        durum(true, `${bagliYazi} · ${mesajSayisi} mesaj`);
+        oyAl(s.id || s.username, d && d.content);
+      }
+    };
+    ws.onclose = () => { durum(false, "Chat koptu, yeniden bağlanıyor…"); setTimeout(() => baglan(id), 3000); };
+    ws.onerror = () => { try { ws.close(); } catch (_) {} };
+  }
+
+  async function chatBaslat() {
+    const id = await chatroomBul();
+    if (!id) {
+      durum(false, "Chat bulunamadı — config.js'te chatroomId'yi yaz");
+      return;
+    }
+    baglan(id);
+  }
+
+  // ---------- Test modu ----------
+  window.__brbOyAl = oyAl; // tarayıcı konsolundan deneme için
+  if (TEST) {
+    $("#test").style.display = "block";
+    let sahte = 0;
+    document.addEventListener("keydown", e => { if (/^\d$/.test(e.key)) oyAl("klavye" + (sahte++), e.key); });
+    setInterval(() => {
+      if (faz !== "oylama" || Math.random() < .4) return;
+      const r = Math.random(), n = secenekler.length;
+      const sec = r < .45 ? 1 : 1 + Math.floor(Math.random() * n); // 1'e hafif eğilim
+      oyAl("izleyici" + Math.floor(Math.random() * 60), String(Math.min(sec, n)));
+    }, 250);
+  }
+
+  chatBaslat();
+  turBaslat();
+})();
+</script>
+</body>
+</html>
